@@ -1,11 +1,10 @@
-// use libc::{S_IRGRP, S_IROTH, S_IRUSR, S_IWGRP, S_IWOTH, S_IWUSR, S_IXGRP, S_IXOTH, S_IXUSR};
 use chrono::{DateTime, Local};
 use std::{
     fmt,
-    fs::{self},
+    fs,
     io::{self, Error, ErrorKind},
     os::unix::fs::MetadataExt,
-    path::Path,
+    path::Path
 };
 
 #[derive(Debug)]
@@ -20,6 +19,8 @@ pub struct Node {
     pub size: u64,
     pub mode: u32,
     pub modified: DateTime<Local>,
+    pub uid: u32,
+    pub gid: u32,
 }
 
 impl Node {
@@ -46,6 +47,7 @@ impl Node {
             );
         }
         let metadata = path.metadata()?;
+        println!("{:#?}", metadata);
         let parent = Some(String::from(parent));
         Ok(Self {
             children: vec![],
@@ -58,6 +60,8 @@ impl Node {
             size: metadata.len(),
             mode: metadata.mode(),
             modified: DateTime::from(metadata.modified()?),
+            uid: metadata.uid(),
+            gid: metadata.gid(),
         })
     }
 
@@ -70,7 +74,7 @@ impl Node {
                 let name = path
                     .to_str()
                     .ok_or(Error::new(ErrorKind::Other, "Error parsing path"))?;
-                // if !name.starts_with(".") || all { 
+                // if !name.starts_with(".") || all {
                 let index = self.add_node(name)?;
                 if reccursive {
                     self.children[index].parse_dirs(reccursive, all)?;

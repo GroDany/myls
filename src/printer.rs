@@ -4,32 +4,53 @@ use users::{get_user_by_uid, get_group_by_gid};
 
 pub fn printer(tree: &Node, _list: bool, _all: bool, _rec: bool) {
     println!("{}", regular_fmt(tree));
-    if let Some(user) = get_user_by_uid(tree.uid) {
-        println!("{user:#?}");
-    }
-    if let Some(group) = get_group_by_gid(tree.uid) {
-        println!("{group:#?}");
-    }
+    // if let Some(user) = get_user_by_uid(tree.uid) {
+    //     println!("{user:#?}");
+    // }
+    // if let Some(group) = get_group_by_gid(tree.uid) {
+    //     println!("{group:#?}");
+    // }
 }
 
-fn regular_fmt(tree: &Node) -> String {
-    let names: Vec<&str> = tree
+fn regular_fmt(node: &Node) -> String {
+    let names: Vec<&str> = node
         .children
         .iter()
         .map(|c| c.file.as_str())
         .collect::<Vec<&str>>();
-    let size = names.iter().map(|n| n.len()).max().unwrap();
+    let size: usize = names.iter().map(|n| n.len() + 2).sum();
+    if let Some(s) = termsize::get() {
+        if s.cols as usize <= size {
+            return regular_col_fmt(&names, s.cols as usize);
+        }
+    }
     let mut result: String = String::from("");
     for name in names.iter() {
-        let size = if size - name.len() > 0 {
-            size - name.len()
-        } else {
-            2
-        };
-        let padding = " ".repeat(size);
+        let padding = " ".repeat(2);
         result = format!("{result}{name}{padding}");
     }
     result
+}
+
+fn regular_col_fmt(names: &Vec<&str>, width: usize) -> String {
+    let mut result = String::from("");
+    if let Some(max) = names.iter().map(|n| n.len()).max() {
+        // let step = width / max;
+        // for name in names.iter() {
+        //     let padding = if max - name.len() < 2 {
+        //         " ".repeat(2)
+        //     } else {
+        //         " ".repeat(max - name.len())
+        //     };
+        //     result = format!("{result}{name}{padding}");
+        // }
+        
+    }
+    result
+}
+
+fn list_fmt(node: &Node) -> String {
+    String::from("")
 }
 
 fn type_char(tree: &Node) -> String {

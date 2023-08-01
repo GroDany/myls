@@ -47,7 +47,6 @@ impl Node {
             );
         }
         let metadata = path.metadata()?;
-        println!("{:#?}", metadata);
         let parent = Some(String::from(parent));
         Ok(Self {
             children: vec![],

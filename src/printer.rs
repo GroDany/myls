@@ -3,7 +3,8 @@ use libc::{S_IRGRP, S_IROTH, S_IRUSR, S_IWGRP, S_IWOTH, S_IWUSR, S_IXGRP, S_IXOT
 use users::{get_user_by_uid, get_group_by_gid};
 
 pub fn printer(tree: &Node, _list: bool, _all: bool, _rec: bool) {
-    println!("{}", regular_fmt(tree));
+    let res = regular_fmt(tree);
+    println!("{}", res);
     // if let Some(user) = get_user_by_uid(tree.uid) {
     //     println!("{user:#?}");
     // }
@@ -18,10 +19,12 @@ fn regular_fmt(node: &Node) -> String {
         .iter()
         .map(|c| c.file.as_str())
         .collect::<Vec<&str>>();
-    let size: usize = names.iter().map(|n| n.len() + 2).sum();
-    if let Some(s) = termsize::get() {
-        if s.cols as usize <= size {
-            return regular_col_fmt(&names, s.cols as usize);
+    let total_size: usize = names.iter().map(|n| n.len() + 2).sum();
+    if let Some(max) = names.iter().map(|n| n.len()).max() {
+        if let Some(s) = termsize::get() {
+            if s.cols as usize <= total_size - max {
+                return regular_col_fmt(&names, s.cols as usize, max);
+            }
         }
     }
     let mut result: String = String::from("");
@@ -32,25 +35,46 @@ fn regular_fmt(node: &Node) -> String {
     result
 }
 
-fn regular_col_fmt(names: &Vec<&str>, width: usize) -> String {
-    let mut result = String::from("");
-    if let Some(max) = names.iter().map(|n| n.len()).max() {
-        // let step = width / max;
-        // for name in names.iter() {
-        //     let padding = if max - name.len() < 2 {
-        //         " ".repeat(2)
-        //     } else {
-        //         " ".repeat(max - name.len())
-        //     };
-        //     result = format!("{result}{name}{padding}");
-        // }
-        
+fn regular_col_fmt(names: &Vec<&str>, width: usize, max: usize) -> String {
+    let mut result = String::new();
+    let col_number = width / max;
+    let mut cols: Vec<Vec<&str>> = Vec::new();
+    let mut max_len: Vec<usize> = Vec::new();
+    let mut i = 0;
+    while i < names.len() {
+        let col_idx = i % col_number;
+        if cols.len() <= col_idx {
+            cols.push(Vec::new());
+        }
+        cols[col_idx].push(names[i]);
+        i += 1;
     }
+    for col in cols.iter() {
+        if let Some(m) = col.iter().map(|n| n.len()).max() {
+            max_len.push(m);
+        }
+    }
+    i = 0;
+    while i < cols[0].len() {
+        let mut c = 0;
+        while c < cols.len() {
+            if i < cols[c].len() {
+                let padding = " ".repeat(max_len[c] - cols[c][i].len() + 2);
+                result = format!("{result}{}{padding}", cols[c][i]);
+            }
+            c += 1;
+        }
+        if i < cols[0].len() - 1 {
+            result = format!("{result}\n");
+        }
+        i += 1;
+    }
+    //dbg!(&result);
     result
 }
 
 fn list_fmt(node: &Node) -> String {
-    String::from("")
+    String::new()
 }
 
 fn type_char(tree: &Node) -> String {

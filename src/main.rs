@@ -31,7 +31,7 @@ fn main() -> io::Result<()> {
     let args = Args::parse();
     let mut tree = Node::new(args.folder.as_str())?;
 
-    tree.parse_dirs(args.recursive, args.all)?;
+    tree.parse_dirs(args.recursive)?;
     printer::printer(&tree, args.list, args.all, args.recursive);
     Ok(())
 }

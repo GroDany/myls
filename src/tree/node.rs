@@ -64,7 +64,7 @@ impl Node {
         })
     }
 
-    pub fn parse_dirs(&mut self, reccursive: bool, all: bool) -> io::Result<()> {
+    pub fn parse_dirs(&mut self, reccursive: bool) -> io::Result<()> {
         let dir = Path::new(self.path.as_str());
         if dir.is_dir() {
             for entry in fs::read_dir(dir)? {
@@ -73,12 +73,10 @@ impl Node {
                 let name = path
                     .to_str()
                     .ok_or(Error::new(ErrorKind::Other, "Error parsing path"))?;
-                // if !name.starts_with(".") || all {
                 let index = self.add_node(name)?;
                 if reccursive {
-                    self.children[index].parse_dirs(reccursive, all)?;
+                    self.children[index].parse_dirs(reccursive)?;
                 }
-                //}
             }
         }
         self.children.sort();

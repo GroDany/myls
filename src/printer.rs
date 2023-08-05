@@ -2,18 +2,35 @@ use crate::tree::node::Node;
 use libc::{S_IRGRP, S_IROTH, S_IRUSR, S_IWGRP, S_IWOTH, S_IWUSR, S_IXGRP, S_IXOTH, S_IXUSR};
 use users::{get_user_by_uid, get_group_by_gid};
 
-pub fn printer(tree: &Node, _list: bool, _all: bool, _rec: bool) {
-    let res = regular_fmt(tree);
-    println!("{}", res);
-    // if let Some(user) = get_user_by_uid(tree.uid) {
-    //     println!("{user:#?}");
-    // }
-    // if let Some(group) = get_group_by_gid(tree.uid) {
-    //     println!("{group:#?}");
-    // }
+pub fn printer(tree: &Node, list: bool, all: bool, rec: bool) {
+    if rec {
+        return printer_rec(tree, list, all);
+    }
+    if list {
+        let result =  list_fmt(tree, all);
+        return println!("{result}");
+    }
+    let result = regular_fmt(tree, all);
+    println!("{result}");
 }
 
-fn regular_fmt(node: &Node) -> String {
+fn printer_rec(tree: &Node, list: bool, all: bool) {
+    println!("{}:", tree.parent);
+    if list {
+        let res =  list_fmt(tree, all);
+        println!("{res}");
+    } else {
+        let res = regular_fmt(tree, all);
+        println!("{res}");
+    }
+    for child in &tree.children {
+        if child.is_dir && (!child.file.starts_with('.') || all) {
+            printer_rec(child, list, all);
+        }
+    }
+}
+
+fn regular_fmt(node: &Node, all: bool) -> String {
     let names: Vec<&str> = node
         .children
         .iter()
@@ -27,17 +44,23 @@ fn regular_fmt(node: &Node) -> String {
             }
         }
     }
-    let mut result: String = String::from("");
-    for name in names.iter() {
-        let padding = " ".repeat(2);
-        result = format!("{result}{name}{padding}");
+    let mut result: String = String::new();
+    for name in &names {
+        if !name.starts_with('.') || all {
+            let padding = " ".repeat(2);
+            result = format!("{result}{name}{padding}");
+        }
     }
     result
 }
 
 fn regular_col_fmt(names: &Vec<&str>, width: usize, max: usize) -> String {
     let mut result = String::new();
-    let col_number = width / max;
+    let col_number = if width / max <= 5 {
+       width / max 
+    } else {
+       width / max - 2 
+    };
     let mut cols: Vec<Vec<&str>> = Vec::new();
     let mut max_len: Vec<usize> = Vec::new();
     let mut i = 0;
@@ -49,7 +72,7 @@ fn regular_col_fmt(names: &Vec<&str>, width: usize, max: usize) -> String {
         cols[col_idx].push(names[i]);
         i += 1;
     }
-    for col in cols.iter() {
+    for col in &cols {
         if let Some(m) = col.iter().map(|n| n.len()).max() {
             max_len.push(m);
         }
@@ -69,12 +92,30 @@ fn regular_col_fmt(names: &Vec<&str>, width: usize, max: usize) -> String {
         }
         i += 1;
     }
-    //dbg!(&result);
     result
 }
 
-fn list_fmt(node: &Node) -> String {
-    String::new()
+fn list_fmt(node: &Node, all: bool) -> String {
+    let mut result = String::new();
+    let sizes: Vec<String> = node.children.iter().map(|c| c.size.to_string()).collect();
+    if let Some(m) = sizes.iter().map(std::string::String::len).max() {
+        for (i, child) in node.children.iter().enumerate() {
+            if !child.file.starts_with('.') || all {
+                let file_type = type_char(child);
+                let permissions = parse_permissions(child.mode);
+                let user = get_user_by_uid(child.uid).unwrap().name().to_str().unwrap().to_owned();
+                let group = get_group_by_gid(child.gid).unwrap().name().to_str().unwrap().to_owned();
+                let padding = " ".repeat(m - child.size.to_string().len());
+                if i == node.children.len() - 1 {
+                    result = format!("{result}{file_type}{permissions} 1 {user} {group} {padding}{} {} {}", child.size, child.modified.format("%b %_d %H:%M"), child.file);
+                } else {
+                    result = format!("{result}{file_type}{permissions} 1 {user} {group} {padding}{} {} {}\n", child.size, child.modified.format("%b %_d %H:%M"), child.file);
+                }
+            }
+        }
+
+    }
+    result
 }
 
 fn type_char(tree: &Node) -> String {
